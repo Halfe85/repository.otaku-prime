@@ -110,7 +110,7 @@ def make_build_version(base_version: str, channel: str, build_number: int) -> st
             raise RuntimeError(f"Stable source version cannot be prerelease: {base_version}")
         return base_version
     clean = base_version.split("~", 1)[0]
-    return f"{clean}~beta{build_number}"
+    return f"{clean}~alpha{build_number}"
 
 
 def stage_addon(source_dir: Path, channel: str, build_number: int, staging_root: Path) -> tuple[str, str, Path, ET.Element]:
@@ -165,8 +165,6 @@ def publish_source(channel: str, source_root: Path, source_ref: str, source_sha:
             source_dir, channel, build_number, staging_root
         )
 
-        # Only publish the Prime addon and dependencies shipped in the source tree.
-        # The root folder name of every ZIP is the addon id Kodi expects.
         addon_output = channel_zips / addon_id
         addon_output.mkdir(parents=True, exist_ok=True)
         package = addon_output / f"{addon_id}-{version}.zip"

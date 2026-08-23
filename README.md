@@ -9,14 +9,14 @@ It is intentionally separate from the source repository. Kodi installs versioned
 | Kodi repository | Source branch | Purpose |
 | --- | --- | --- |
 | `repository.otaku-prime` | `main` | Stable releases only |
-| `repository.otaku-prime.dev` | `Otaku-Prime` | Development/beta builds |
+| `repository.otaku-prime.dev` | `Otaku-Prime` | Development/alpha builds |
 
 Feature branches are never published directly to Kodi.
 
 ## Version policy
 
 - Stable: `MAJOR.MINOR.PATCH`, for example `0.2.0`
-- Development: stable target plus beta build, for example `0.3.0~beta42`
+- Development: stable target plus alpha build, for example `0.3.0~alpha42`
 - Published ZIPs are immutable. A released version is never silently overwritten.
 - Git commit SHA and source branch are recorded by the build pipeline.
 

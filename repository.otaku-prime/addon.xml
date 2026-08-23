@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="repository.otaku-prime" name="Otaku Prime Repository" version="1.0.0" provider-name="Halfe85">
+    <extension point="xbmc.addon.repository" name="Otaku Prime Repository">
+        <dir>
+            <info compressed="false">https://raw.githubusercontent.com/Halfe85/repository.otaku-prime/main/repo/stable/zips/addons.xml</info>
+            <checksum>https://raw.githubusercontent.com/Halfe85/repository.otaku-prime/main/repo/stable/zips/addons.xml.md5</checksum>
+            <datadir zip="true">https://raw.githubusercontent.com/Halfe85/repository.otaku-prime/main/repo/stable/zips/</datadir>
+        </dir>
+    </extension>
+    <extension point="xbmc.addon.metadata">
+        <summary lang="en">Stable Otaku Prime releases</summary>
+        <description lang="en">Stable Kodi repository for Otaku Prime.</description>
+        <platform>all</platform>
+    </extension>
+</addon>

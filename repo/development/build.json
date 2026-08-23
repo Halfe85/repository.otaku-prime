@@ -1,0 +1,15 @@
+{
+  "channel": "development",
+  "github_run_number": 3,
+  "published": [
+    {
+      "id": "plugin.video.otaku.prime",
+      "sha256": "2e50d4ecc1fc073d228b27405d6577b074f0ce050d35b647406a5096894f499c",
+      "version": "0.1.0~beta3",
+      "zip": "repo/development/zips/plugin.video.otaku.prime/plugin.video.otaku.prime-0.1.0~beta3.zip"
+    }
+  ],
+  "source_ref": "Otaku-Prime",
+  "source_repository": "Halfe85/Otaku-Prime",
+  "source_sha": "d3bdb36f6bea986672a9b17a37d801c23c6d427e"
+}

@@ -1,0 +1,118 @@
+name: Publish Kodi repository
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/**"
+      - "repository.otaku-prime/**"
+      - "repository.otaku-prime.dev/**"
+      - ".github/workflows/publish-kodi-repository.yml"
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Kodi channel to publish"
+        required: true
+        default: "development"
+        type: choice
+        options:
+          - development
+          - stable
+          - both
+
+permissions:
+  contents: write
+
+concurrency:
+  group: otaku-prime-kodi-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout distribution repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select channels
+        id: channels
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" || "$GITHUB_EVENT_NAME" == "push" ]]; then
+            echo "development=true" >> "$GITHUB_OUTPUT"
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+          else
+            case "${{ inputs.channel }}" in
+              development)
+                echo "development=true" >> "$GITHUB_OUTPUT"
+                echo "stable=false" >> "$GITHUB_OUTPUT"
+                ;;
+              stable)
+                echo "development=false" >> "$GITHUB_OUTPUT"
+                echo "stable=true" >> "$GITHUB_OUTPUT"
+                ;;
+              both)
+                echo "development=true" >> "$GITHUB_OUTPUT"
+                echo "stable=true" >> "$GITHUB_OUTPUT"
+                ;;
+            esac
+          fi
+
+      - name: Fetch Otaku Prime development source
+        if: steps.channels.outputs.development == 'true'
+        shell: bash
+        run: |
+          rm -rf /tmp/otaku-prime-development
+          git clone --depth 1 --branch Otaku-Prime \
+            https://github.com/Halfe85/Otaku-Prime.git \
+            /tmp/otaku-prime-development
+          echo "DEV_SHA=$(git -C /tmp/otaku-prime-development rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Publish development channel
+        if: steps.channels.outputs.development == 'true'
+        shell: bash
+        run: |
+          python tools/build_repository.py \
+            --channel development \
+            --source-root /tmp/otaku-prime-development \
+            --source-ref Otaku-Prime \
+            --source-sha "$DEV_SHA" \
+            --build-number "$GITHUB_RUN_NUMBER"
+
+      - name: Fetch Otaku Prime stable source
+        if: steps.channels.outputs.stable == 'true'
+        shell: bash
+        run: |
+          rm -rf /tmp/otaku-prime-stable
+          git clone --depth 1 --branch main \
+            https://github.com/Halfe85/Otaku-Prime.git \
+            /tmp/otaku-prime-stable
+          echo "STABLE_SHA=$(git -C /tmp/otaku-prime-stable rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Publish stable channel
+        if: steps.channels.outputs.stable == 'true'
+        shell: bash
+        run: |
+          python tools/build_repository.py \
+            --channel stable \
+            --source-root /tmp/otaku-prime-stable \
+            --source-ref main \
+            --source-sha "$STABLE_SHA" \
+            --build-number "$GITHUB_RUN_NUMBER"
+
+      - name: Commit generated repository files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .state repo repository.otaku-prime-*.zip
+          if git diff --cached --quiet; then
+            echo "No generated changes to publish."
+            exit 0
+          fi
+          git commit -m "Publish Kodi repository build ${GITHUB_RUN_NUMBER}"
+          git push origin HEAD:main

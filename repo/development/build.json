@@ -1,15 +1,15 @@
 {
   "channel": "development",
-  "github_run_number": 54,
+  "github_run_number": 55,
   "published": [
     {
       "id": "plugin.video.otaku.prime",
-      "sha256": "b6897936f38d145267911e10c470101665cb7d774ad6395fc29b84b5afec1a99",
-      "version": "0.1.2~alpha54",
-      "zip": "repo/development/zips/plugin.video.otaku.prime/plugin.video.otaku.prime-0.1.2~alpha54.zip"
+      "sha256": "b3002a7c049fc332831a286df7fad5149eaa42e23e3a8e9040ec3b17c62dbfa1",
+      "version": "0.1.2~alpha55",
+      "zip": "repo/development/zips/plugin.video.otaku.prime/plugin.video.otaku.prime-0.1.2~alpha55.zip"
     }
   ],
   "source_ref": "Otaku-Prime",
   "source_repository": "Halfe85/Otaku-Prime",
-  "source_sha": "c28c76734db0be08f1026cbd1a679631a020ea27"
+  "source_sha": "86736d87b1d3096f43937fa85c7db4a0ae40e0c5"
 }

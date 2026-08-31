@@ -3,24 +3,62 @@ set -Eeuo pipefail
 
 # Otaku Prime development publisher
 #
-# Publishes:
-#   Halfe85/Otaku-Prime:Otaku-Prime
-#        ->
-#   Halfe85/repository.otaku-prime:main
-#        ->
-#   Kodi development repository
+# Usage:
+#   ./publish-alpha.sh              Publish Otaku Prime development alpha
+#   ./publish-alpha.sh --Jellyui    Publish Jellyfin UI development alpha
 #
 # Version behavior:
-#   0.1.0 + existing alpha7  -> 0.1.0~alpha8
+#   0.1.0 + existing alpha7   -> 0.1.0~alpha8
 #   0.1.1 + no existing alpha -> 0.1.1~alpha1
 
-SOURCE_REPO="${SOURCE_REPO:-https://github.com/Halfe85/Otaku-Prime.git}"
-DIST_REPO="${DIST_REPO:-https://github.com/Halfe85/repository.otaku-prime.git}"
+MODE="otaku"
+case "${1:-}" in
+    "")
+        ;;
+    --Jellyui|--jellyui)
+        MODE="jellyui"
+        shift
+        ;;
+    -h|--help)
+        echo "Usage: $0 [--Jellyui]"
+        echo
+        echo "Without arguments: publish an Otaku Prime development alpha."
+        echo "--Jellyui:         publish a Jellyfin UI development alpha."
+        exit 0
+        ;;
+    *)
+        echo "ERROR: Unknown option: $1" >&2
+        echo "Usage: $0 [--Jellyui]" >&2
+        exit 2
+        ;;
+esac
 
-SOURCE_BRANCH="Otaku-Prime"
+if (( $# > 0 )); then
+    echo "ERROR: Unexpected argument: $1" >&2
+    echo "Usage: $0 [--Jellyui]" >&2
+    exit 2
+fi
+
+DIST_REPO="${DIST_REPO:-https://github.com/Halfe85/repository.otaku-prime.git}"
 DIST_BRANCH="main"
-ADDON_ID="plugin.video.otaku.prime"
-ADDON_REL="plugin.video.otaku.prime/addon.xml"
+
+if [[ "$MODE" == "jellyui" ]]; then
+    SOURCE_REPO="${JELLY_UI_REPO:-https://github.com/Halfe85/kodi-jellyfin.UI.git}"
+    SOURCE_BRANCH="${JELLY_UI_BRANCH:-main}"
+    ADDON_ID="skin.jellyfin.ui"
+    ADDON_DIR_REL="skin.jellyfin.ui"
+    ADDON_REL="$ADDON_DIR_REL/addon.xml"
+    PRODUCT_NAME="Jellyfin UI"
+    SOURCE_NAME="kodi-jellyfin.UI"
+else
+    SOURCE_REPO="${SOURCE_REPO:-https://github.com/Halfe85/Otaku-Prime.git}"
+    SOURCE_BRANCH="Otaku-Prime"
+    ADDON_ID="plugin.video.otaku.prime"
+    ADDON_DIR_REL="plugin.video.otaku.prime"
+    ADDON_REL="$ADDON_DIR_REL/addon.xml"
+    PRODUCT_NAME="Otaku Prime"
+    SOURCE_NAME="Otaku-Prime"
+fi
 
 die() {
     echo
@@ -36,7 +74,7 @@ need git
 need python3
 
 echo "=============================================="
-echo " Otaku Prime - publish development alpha"
+echo " $PRODUCT_NAME - publish development alpha"
 echo "=============================================="
 echo
 
@@ -65,13 +103,16 @@ SOURCE_START_SHA="$(git -C "$SOURCE_DIR" rev-parse HEAD)"
 DIST_START_SHA="$(git -C "$DIST_DIR" rev-parse HEAD)"
 
 ADDON_XML="$SOURCE_DIR/$ADDON_REL"
-[[ -f "$ADDON_XML" ]] || die "Source addon.xml not found: $ADDON_REL"
-[[ -f "$DIST_DIR/tools/build_repository.py" ]] || die "Distribution build tool not found: tools/build_repository.py"
+[[ -f "$ADDON_XML" ]] || die "Source addon.xml not found: $ADDON_REL in $SOURCE_NAME/$SOURCE_BRANCH"
+
+if [[ "$MODE" == "otaku" ]]; then
+    [[ -f "$DIST_DIR/tools/build_repository.py" ]] || die "Distribution build tool not found: tools/build_repository.py"
+fi
 
 ZIP_DIR="$DIST_DIR/repo/development/zips/$ADDON_ID"
 mkdir -p "$ZIP_DIR"
 
-# Find the highest alpha already published for exactly this base version.
+# Find the highest alpha already published for exactly this addon/base version.
 MAX_ALPHA=0
 shopt -s nullglob
 for package in "$ZIP_DIR/${ADDON_ID}-${BASE_VERSION}~alpha"*.zip; do
@@ -90,9 +131,9 @@ FULL_VERSION="${BASE_VERSION}~alpha${NEXT_ALPHA}"
 
 echo
 if (( MAX_ALPHA > 0 )); then
-    echo "Found latest ${BASE_VERSION} build: alpha${MAX_ALPHA}"
+    echo "Found latest $PRODUCT_NAME ${BASE_VERSION} build: alpha${MAX_ALPHA}"
 else
-    echo "No existing alpha build found for ${BASE_VERSION}"
+    echo "No existing $PRODUCT_NAME alpha build found for ${BASE_VERSION}"
 fi
 echo "Next build: $FULL_VERSION"
 echo
@@ -111,8 +152,8 @@ PY
 
 SOURCE_VERSION_CHANGED=0
 
-# If a new base version was selected, update addon.xml in the source branch.
-# This keeps Git provenance consistent with the version being packaged.
+# Keep source addon.xml on the requested base version. Alpha suffixes only exist
+# in immutable repository packages.
 if [[ "$CURRENT_BASE_VERSION" != "$BASE_VERSION" ]]; then
     echo "Updating source addon.xml:"
     echo "  $CURRENT_BASE_VERSION -> $BASE_VERSION"
@@ -145,42 +186,182 @@ PY
 fi
 
 SOURCE_SHA="$(git -C "$SOURCE_DIR" rev-parse HEAD)"
-
-# build_repository.py normally suppresses another publication from an unchanged
-# source SHA. For an explicitly requested manual alpha build we intentionally
-# permit a new immutable alpha package from the current source.
-rm -f "$DIST_DIR/.state/development.sha"
-
-echo "Building $FULL_VERSION..."
-
-# The repository installer itself is versioned separately and immutable.
-# build_repository.py always tries to regenerate repository.otaku-prime.dev-1.0.0.zip,
-# which can legitimately differ from the already-published installer bytes.
-# Preserve the published installer while building a new addon alpha.
-REPO_INSTALLER="$DIST_DIR/repository.otaku-prime.dev-1.0.0.zip"
-REPO_INSTALLER_BACKUP="$WORKDIR/repository.otaku-prime.dev-1.0.0.zip.published"
-HAD_REPO_INSTALLER=0
-
-if [[ -f "$REPO_INSTALLER" ]]; then
-    cp -p "$REPO_INSTALLER" "$REPO_INSTALLER_BACKUP"
-    rm -f "$REPO_INSTALLER"
-    HAD_REPO_INSTALLER=1
-fi
-
-python3 "$DIST_DIR/tools/build_repository.py" \
-    --channel development \
-    --source-root "$SOURCE_DIR" \
-    --source-ref "$SOURCE_BRANCH" \
-    --source-sha "$SOURCE_SHA" \
-    --build-number "$NEXT_ALPHA"
-
-# Do not silently replace the already-published repository installer.
-if (( HAD_REPO_INSTALLER == 1 )); then
-    rm -f "$REPO_INSTALLER"
-    mv "$REPO_INSTALLER_BACKUP" "$REPO_INSTALLER"
-fi
-
 EXPECTED_ZIP="$ZIP_DIR/${ADDON_ID}-${FULL_VERSION}.zip"
+
+echo "Building $PRODUCT_NAME $FULL_VERSION..."
+
+if [[ "$MODE" == "jellyui" ]]; then
+    STAGING_ROOT="$WORKDIR/staging"
+    STAGED_ADDON="$STAGING_ROOT/$ADDON_ID"
+    mkdir -p "$STAGING_ROOT"
+    cp -a "$SOURCE_DIR/$ADDON_DIR_REL" "$STAGED_ADDON"
+
+    # The source keeps the clean base version. The repository ZIP receives the
+    # immutable ~alphaN version used by Kodi's update system.
+    python3 - "$STAGED_ADDON/addon.xml" "$FULL_VERSION" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path = sys.argv[1]
+version = sys.argv[2]
+tree = ET.parse(path)
+root = tree.getroot()
+root.set("version", version)
+tree.write(path, encoding="UTF-8", xml_declaration=True)
+PY
+
+    # Build a deterministic Kodi ZIP with skin.jellyfin.ui as the top folder.
+    python3 - "$STAGED_ADDON" "$EXPECTED_ZIP" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+import zipfile
+
+source_dir = Path(sys.argv[1])
+output = Path(sys.argv[2])
+output.parent.mkdir(parents=True, exist_ok=True)
+tmp = output.with_suffix(output.suffix + ".tmp")
+if tmp.exists():
+    tmp.unlink()
+
+with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+    for path in sorted(source_dir.rglob("*")):
+        if path.is_dir():
+            continue
+        rel = Path(source_dir.name) / path.relative_to(source_dir)
+        info = zipfile.ZipInfo(rel.as_posix(), date_time=(1980, 1, 1, 0, 0, 0))
+        info.compress_type = zipfile.ZIP_DEFLATED
+        info.external_attr = 0o100644 << 16
+        zf.writestr(info, path.read_bytes())
+
+def digest(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for block in iter(lambda: fh.read(1024 * 1024), b""):
+            h.update(block)
+    return h.hexdigest()
+
+if output.exists():
+    if digest(output) == digest(tmp):
+        tmp.unlink()
+    else:
+        tmp.unlink()
+        raise SystemExit(f"Refusing to overwrite immutable package: {output}")
+else:
+    tmp.replace(output)
+PY
+
+    # Repository artwork sits beside the ZIP when the skin supplies it.
+    for asset in icon.png fanart.jpg; do
+        if [[ -f "$STAGED_ADDON/$asset" ]]; then
+            cp -p "$STAGED_ADDON/$asset" "$ZIP_DIR/$asset"
+        fi
+    done
+
+    FEED_XML="$DIST_DIR/repo/development/zips/addons.xml"
+    FEED_MD5="$DIST_DIR/repo/development/zips/addons.xml.md5"
+
+    # Merge/replace only the Jellyfin UI entry. Existing Otaku Prime and other
+    # add-ons in the repository feed remain untouched.
+    python3 - "$FEED_XML" "$STAGED_ADDON/addon.xml" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+feed_path = Path(sys.argv[1])
+addon_path = Path(sys.argv[2])
+addon = ET.parse(addon_path).getroot()
+addon_id = addon.attrib["id"]
+
+if feed_path.exists():
+    feed = ET.parse(feed_path).getroot()
+else:
+    feed = ET.Element("addons")
+
+for child in list(feed):
+    if child.attrib.get("id") == addon_id:
+        feed.remove(child)
+
+feed.append(addon)
+feed[:] = sorted(feed, key=lambda item: item.attrib.get("id", ""))
+data = ET.tostring(feed, encoding="UTF-8", xml_declaration=True) + b"\n"
+feed_path.parent.mkdir(parents=True, exist_ok=True)
+feed_path.write_bytes(data)
+PY
+
+    python3 - "$FEED_XML" "$FEED_MD5" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+target.write_text(hashlib.md5(source.read_bytes()).hexdigest() + "\n", encoding="ascii")
+PY
+
+    python3 - "$DIST_DIR/repo/development/build-jellyui.json" \
+        "$SOURCE_BRANCH" "$SOURCE_SHA" "$NEXT_ALPHA" "$ADDON_ID" "$FULL_VERSION" "$EXPECTED_ZIP" "$DIST_DIR" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+out = Path(sys.argv[1])
+source_ref = sys.argv[2]
+source_sha = sys.argv[3]
+build_number = int(sys.argv[4])
+addon_id = sys.argv[5]
+version = sys.argv[6]
+package = Path(sys.argv[7])
+root = Path(sys.argv[8])
+
+h = hashlib.sha256(package.read_bytes()).hexdigest()
+meta = {
+    "channel": "development",
+    "source_repository": "Halfe85/kodi-jellyfin.UI",
+    "source_ref": source_ref,
+    "source_sha": source_sha,
+    "build_number": build_number,
+    "published": {
+        "id": addon_id,
+        "version": version,
+        "zip": str(package.relative_to(root)),
+        "sha256": h,
+    },
+}
+out.write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+PY
+else
+    # build_repository.py normally suppresses another publication from an
+    # unchanged source SHA. A manual alpha explicitly requests a new immutable
+    # package from the current Otaku Prime source.
+    rm -f "$DIST_DIR/.state/development.sha"
+
+    # The repository installer is versioned separately and immutable. Preserve
+    # its already-published bytes while building a new Otaku Prime alpha.
+    REPO_INSTALLER="$DIST_DIR/repository.otaku-prime.dev-1.0.0.zip"
+    REPO_INSTALLER_BACKUP="$WORKDIR/repository.otaku-prime.dev-1.0.0.zip.published"
+    HAD_REPO_INSTALLER=0
+
+    if [[ -f "$REPO_INSTALLER" ]]; then
+        cp -p "$REPO_INSTALLER" "$REPO_INSTALLER_BACKUP"
+        rm -f "$REPO_INSTALLER"
+        HAD_REPO_INSTALLER=1
+    fi
+
+    python3 "$DIST_DIR/tools/build_repository.py" \
+        --channel development \
+        --source-root "$SOURCE_DIR" \
+        --source-ref "$SOURCE_BRANCH" \
+        --source-sha "$SOURCE_SHA" \
+        --build-number "$NEXT_ALPHA"
+
+    if (( HAD_REPO_INSTALLER == 1 )); then
+        rm -f "$REPO_INSTALLER"
+        mv "$REPO_INSTALLER_BACKUP" "$REPO_INSTALLER"
+    fi
+fi
+
 [[ -f "$EXPECTED_ZIP" ]] || die "Expected package was not generated: $EXPECTED_ZIP"
 
 git -C "$DIST_DIR" add -A
@@ -192,7 +373,7 @@ fi
 git -C "$DIST_DIR" \
     -c user.name="Halfe85" \
     -c user.email="halfe85@users.noreply.github.com" \
-    commit --quiet -m "Publish Otaku Prime $FULL_VERSION"
+    commit --quiet -m "Publish $PRODUCT_NAME $FULL_VERSION"
 
 # Make sure neither remote moved while the build was being prepared.
 echo "Checking remote branches before publishing..."
@@ -202,7 +383,7 @@ SOURCE_REMOTE_SHA="$(git -C "$SOURCE_DIR" rev-parse "origin/$SOURCE_BRANCH")"
 
 if (( SOURCE_VERSION_CHANGED == 1 )); then
     if [[ "$SOURCE_REMOTE_SHA" != "$SOURCE_START_SHA" ]]; then
-        die "Otaku-Prime/$SOURCE_BRANCH changed while building. Nothing was pushed. Run the script again."
+        die "$SOURCE_NAME/$SOURCE_BRANCH changed while building. Nothing was pushed. Run the script again."
     fi
 fi
 
@@ -216,7 +397,7 @@ fi
 echo
 echo "Publishing..."
 
-# Push source first only when the base version changed.
+# Push source first only when the requested base version changed.
 if (( SOURCE_VERSION_CHANGED == 1 )); then
     git -C "$SOURCE_DIR" push origin "HEAD:$SOURCE_BRANCH"
 fi
@@ -227,7 +408,9 @@ echo
 echo "=============================================="
 echo " Published successfully"
 echo "=============================================="
+echo "Product:     $PRODUCT_NAME"
 echo "Version:     $FULL_VERSION"
+echo "Source ref:  $SOURCE_BRANCH"
 echo "Source SHA:  $SOURCE_SHA"
 echo "Kodi repo:   development"
 echo

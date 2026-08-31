@@ -1,0 +1,13 @@
+{
+  "build_number": 1,
+  "channel": "development",
+  "published": {
+    "id": "skin.jellyfin.ui",
+    "sha256": "47d9dafb9c55b461101c14e40e3e32ccea6c86037036f2ebcb7fef4a43201d05",
+    "version": "0.0.1~alpha1",
+    "zip": "repo/development/zips/skin.jellyfin.ui/skin.jellyfin.ui-0.0.1~alpha1.zip"
+  },
+  "source_ref": "main",
+  "source_repository": "Halfe85/kodi-jellyfin.UI",
+  "source_sha": "3b49ed84804c2672fe76b6ec14da8516d75f4af3"
+}

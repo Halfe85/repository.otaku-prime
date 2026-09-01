@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<addons><addon id="plugin.video.otaku.prime" name="Otaku Prime" provider-name="Otaku Prime" version="0.1.2~alpha127">
+<addons><addon id="plugin.video.otaku.prime" name="Otaku Prime" provider-name="Otaku Prime" version="0.1.2~alpha128">
   <requires>
     <import addon="xbmc.python" version="3.0.1" />
     <import addon="context.otaku" version="1.0.34" />
@@ -14,22 +14,5 @@
     <platform>all</platform>
     <license>GPL-3.0</license>
     <source>https://github.com/Halfe85/Otaku-Prime</source>
-  </extension>
-</addon><addon id="skin.jellyfin.ui" name="Jellyfin UI" version="0.0.1~alpha1" provider-name="Halfe85">
-  <requires>
-    <import addon="xbmc.gui" version="5.17.0" />
-  </requires>
-
-  <extension point="xbmc.gui.skin" debugging="false">
-    <res width="1920" height="1080" aspect="16:9" default="true" folder="xml" />
-  </extension>
-
-  <extension point="xbmc.addon.metadata">
-    <summary lang="en_GB">A controller-first Jellyfin/Plex inspired Kodi interface.</summary>
-    <description lang="en_GB">Jellyfin UI is a native Kodi skin designed around Jellyfin-style media browsing and Plex Media Player-style ten-foot navigation. It works with Kodi library content, Jellyfin for Kodi synced libraries, and well-formed video add-ons such as Otaku Prime.</description>
-    <disclaimer lang="en_GB">Unofficial community project. Not affiliated with or endorsed by Jellyfin, Plex, or Kodi.</disclaimer>
-    <platform>all</platform>
-    <license>GPL-2.0-or-later</license>
-    <source>https://github.com/Halfe85/kodi-jellyfin.UI</source>
   </extension>
 </addon></addons>

@@ -1,8 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<addons><addon id="plugin.video.otaku.prime" name="Otaku Prime" provider-name="Otaku Prime" version="0.1.2~alpha144">
+<addons><addon id="plugin.video.otaku.prime" name="Otaku Prime" provider-name="Otaku Prime" version="0.1.3~alpha1">
   <requires>
     <import addon="xbmc.python" version="3.0.1" />
-    <import addon="script.module.pil" version="5.1.0" />
     <import addon="context.otaku" version="1.0.34" />
   </requires>
   <extension library="main.py" point="xbmc.python.pluginsource">
